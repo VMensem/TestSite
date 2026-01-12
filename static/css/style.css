@@ -1,0 +1,10 @@
+body { font-family: Arial, sans-serif; background: #f0f0f0; }
+.container { max-width: 600px; margin: auto; padding: 20px; background: #fff; border-radius: 10px; }
+.tg-btn { padding: 10px 20px; background: #0088cc; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+.hidden { display: none; }
+.stars { margin: 10px 0; cursor: pointer; font-size: 24px; }
+.star.full { color: gold; }
+textarea { width: 100%; padding: 10px; margin-bottom: 10px; }
+button { cursor: pointer; padding: 5px 10px; }
+.review { border-top: 1px solid #ccc; padding: 10px 0; display: flex; align-items: center; gap: 10px; }
+.review .avatar { width: 40px; height: 40px; border-radius: 50%; }
