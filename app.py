@@ -3,12 +3,15 @@ import sqlite3
 import os
 
 app = Flask(__name__)
-app.secret_key = "supersecretkey2026"
+app.secret_key = "tyukghjouygdtyryfgyhkutgdtrghgfutrfgfu6ythgfuyrfuuyfv65ytgvf"
 
 DB_NAME = "database.db"
 
+# --------------------------- 🗄 БД ---------------------------
 def get_db():
-    return sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
     db = get_db()
@@ -34,28 +37,32 @@ def init_db():
     )
     """)
     db.commit()
-
 init_db()
 
-# --------------------------- Главная страница ---------------------------
+# --------------------------- 🌍 Страницы ---------------------------
 @app.route("/")
-def reviews():
+def reviews_page():
     return render_template("reviews.html")
 
-# --------------------------- Telegram Auth ---------------------------
+# --------------------------- 🔐 Telegram Auth ---------------------------
 @app.route("/api/auth/telegram", methods=["POST"])
 def telegram_auth():
-    data = request.json
+    data = request.form.to_dict()  # Telegram присылает POST form-data
+    telegram_id = data.get("id")
+    if not telegram_id:
+        return jsonify({"error": "Telegram auth failed"}), 400
+
     db = get_db()
     c = db.cursor()
-    c.execute("SELECT id FROM users WHERE telegram_id=?", (data["id"],))
+    c.execute("SELECT id FROM users WHERE telegram_id=?", (telegram_id,))
     row = c.fetchone()
+
     if not row:
         c.execute("""
         INSERT INTO users (telegram_id, username, name, avatar)
         VALUES (?, ?, ?, ?)
         """, (
-            data["id"],
+            telegram_id,
             data.get("username"),
             data.get("first_name"),
             data.get("photo_url")
@@ -63,45 +70,69 @@ def telegram_auth():
         db.commit()
         user_id = c.lastrowid
     else:
-        user_id = row[0]
+        user_id = row["id"]
+
     session["user_id"] = user_id
     return jsonify({"status": "ok"})
 
-# --------------------------- API Reviews ---------------------------
+# --------------------------- ⭐ API отзывов ---------------------------
 @app.route("/api/reviews")
 def api_reviews():
     db = get_db()
     c = db.cursor()
     c.execute("""
-    SELECT r.rating, r.text, u.username, u.name, u.avatar
+    SELECT r.rating, r.text, r.created_at,
+           u.username, u.name, u.avatar
     FROM reviews r
     JOIN users u ON u.id = r.user_id
     ORDER BY r.created_at DESC
     """)
     rows = c.fetchall()
     return jsonify([
-        {"rating": r[0], "text": r[1], "username": r[2], "name": r[3], "avatar": r[4]}
-        for r in rows
+        {
+            "rating": r["rating"],
+            "text": r["text"],
+            "time": r["created_at"],
+            "username": r["username"],
+            "name": r["name"],
+            "avatar": r["avatar"]
+        } for r in rows
     ])
 
 @app.route("/api/review", methods=["POST"])
 def add_review():
     if "user_id" not in session:
-        return {"error": "auth required"}, 403
-    data = request.json
+        return jsonify({"error": "auth required"}), 403
+
+    data = request.get_json()
+    rating = data.get("rating")
+    text = data.get("text", "").strip()
+    if not text or not rating:
+        return jsonify({"error": "invalid data"}), 400
+
     db = get_db()
     c = db.cursor()
     c.execute("SELECT id FROM reviews WHERE user_id=?", (session["user_id"],))
     if c.fetchone():
-        return {"error": "already exists"}, 400
+        return jsonify({"error": "already exists"}), 400
+
     c.execute("""
     INSERT INTO reviews (user_id, rating, text)
     VALUES (?, ?, ?)
-    """, (session["user_id"], data["rating"], data["text"]))
+    """, (session["user_id"], rating, text))
     db.commit()
-    return {"status": "ok"}
+    return jsonify({"status": "ok"})
 
-# --------------------------- Запуск ---------------------------
+# --------------------------- ⭐ Ошибки ---------------------------
+@app.errorhandler(404)
+def page_not_found(e):
+    return "Page not found", 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    return "Internal server error", 500
+
+# --------------------------- 🚀 Запуск ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
