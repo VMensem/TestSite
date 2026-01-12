@@ -1,79 +1,75 @@
-let rating = 1;
-
-const tgLoginBtn = document.getElementById("tg-login-btn");
-const reviewForm = document.getElementById("review-form");
+let rating = 1; // начальная оценка
 const stars = document.querySelectorAll(".star");
-const submitBtn = document.getElementById("submit-review");
-const reviewText = document.getElementById("review-text");
-const reviewsContainer = document.getElementById("reviews-container");
+const reviewForm = document.getElementById("review-form");
+const reviewsList = document.getElementById("reviews-list");
 
-tgLoginBtn.addEventListener("click", () => {
-    // Здесь нужно заменить на реальный Telegram Login
-    fetch("/api/auth/telegram", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            id: Date.now(),
-            first_name: "Vlad",
-            username: "VladMensem",
-            photo_url: "https://placekitten.com/50/50"
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if(data.status === "ok") {
-            tgLoginBtn.style.display = "none";
-            reviewForm.classList.remove("hidden");
-        }
-    });
-});
-
+// Звёзды
 stars.forEach(star => {
     star.addEventListener("click", () => {
-        rating = parseInt(star.dataset.rating);
-        stars.forEach(s => s.classList.remove("full"));
-        stars.forEach(s => {
-            if(parseInt(s.dataset.rating) <= rating) s.classList.add("full");
-        });
+        rating = parseInt(star.dataset.value);
+        updateStars();
     });
 });
 
-submitBtn.addEventListener("click", () => {
-    const text = reviewText.value.trim();
-    if(!text) return alert("Введите отзыв!");
-    fetch("/api/review", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({rating, text})
-    }).then(res => res.json())
-    .then(data => {
-        if(data.status === "ok") {
-            reviewText.value = "";
-            rating = 1;
-            stars.forEach(s => s.classList.remove("full"));
-            stars[0].classList.add("full");
-            loadReviews();
-        } else alert(data.error);
-    });
-});
-
-function loadReviews() {
-    fetch("/api/reviews")
-    .then(res => res.json())
-    .then(data => {
-        reviewsContainer.innerHTML = "";
-        data.forEach(r => {
-            const div = document.createElement("div");
-            div.className = "review";
-            div.innerHTML = `
-                <img src="${r.avatar}" class="avatar"/>
-                <b>${r.name || r.username}</b>
-                <span>${"★".repeat(r.rating) + "☆".repeat(5-r.rating)}</span>
-                <p>${r.text}</p>
-            `;
-            reviewsContainer.appendChild(div);
-        });
+function updateStars() {
+    stars.forEach(star => {
+        if (parseInt(star.dataset.value) <= rating) {
+            star.classList.add("full");
+        } else {
+            star.classList.remove("full");
+        }
     });
 }
 
+// Загрузка отзывов
+async function loadReviews() {
+    const res = await fetch("/api/reviews");
+    const data = await res.json();
+    reviewsList.innerHTML = "";
+    data.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "review";
+        div.innerHTML = `
+            <div class="user">
+                <img src="${r.avatar}" alt="avatar">
+                <strong>${r.name || r.username}</strong>
+            </div>
+            <div class="stars">
+                ${"★".repeat(r.rating)}${"☆".repeat(5 - r.rating)}
+            </div>
+            <p>${r.text}</p>
+        `;
+        reviewsList.appendChild(div);
+    });
+}
+
+// Отправка отзыва
+document.getElementById("submit-review").addEventListener("click", async () => {
+    const text = document.getElementById("review-text").value;
+    if (!text) return alert("Напишите отзыв!");
+    const res = await fetch("/api/review", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({rating, text})
+    });
+    const data = await res.json();
+    if (data.status === "ok") {
+        document.getElementById("review-text").value = "";
+        rating = 1;
+        updateStars();
+        loadReviews();
+    } else {
+        alert(data.error || "Ошибка");
+    }
+});
+
+// Telegram авторизация
+window.TelegramLoginWidget && (window.TelegramLoginWidget = {
+    onAuth: () => {
+        reviewForm.style.display = "block";
+    }
+});
+
+// Инициализация
 loadReviews();
+updateStars();
