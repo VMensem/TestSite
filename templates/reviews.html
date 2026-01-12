@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Отзывы{% endblock %}
+
+{% block content %}
+<section class="section-head">
+    <h1 class="section-title">Отзывы пользователей</h1>
+</section>
+
+<div class="glass-form" id="review-form">
+    <div id="tg-login-btn"></div>
+    <div class="form-field">
+        <span>Текст отзыва</span>
+        <textarea id="review-text" placeholder="Напишите отзыв..." rows="4"></textarea>
+    </div>
+    <div class="form-field">
+        <span>Оценка</span>
+        <div class="stars" id="star-rating">
+            <span data-value="1" class="star full">★</span>
+            <span data-value="2" class="star">☆</span>
+            <span data-value="3" class="star">☆</span>
+            <span data-value="4" class="star">☆</span>
+            <span data-value="5" class="star">☆</span>
+        </div>
+    </div>
+    <button id="submit-review" class="cta-main">Отправить отзыв</button>
+</div>
+
+<div id="reviews-list"></div>
+{% endblock %}
