@@ -1,14 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
-import json
-import os
+from flask import Flask, render_template, request, session, jsonify
 import sqlite3
+import os
 
 app = Flask(__name__)
-app.secret_key = "tyukghjouygdtyryfgyhkutgdtrghgfutrfgfu6ythgfuyrfuuyfv65ytgvf"
+app.secret_key = "supersecretkey2026"
 
 DB_NAME = "database.db"
 
-# --------------------------- 🗄 БД ---------------------------
 def get_db():
     return sqlite3.connect(DB_NAME, check_same_thread=False)
 
@@ -39,16 +37,12 @@ def init_db():
 
 init_db()
 
-# --------------------------- ⭐ Страницы ---------------------------
+# --------------------------- Главная страница ---------------------------
 @app.route("/")
-def index():
-    return "<h1>Mensem Fun Test</h1><a href='/reviews/'>Отзывы</a>"
-
-@app.route("/reviews/")
 def reviews():
     return render_template("reviews.html")
 
-# --------------------------- 🔐 Telegram Auth ---------------------------
+# --------------------------- Telegram Auth ---------------------------
 @app.route("/api/auth/telegram", methods=["POST"])
 def telegram_auth():
     data = request.json
@@ -73,28 +67,21 @@ def telegram_auth():
     session["user_id"] = user_id
     return jsonify({"status": "ok"})
 
-# --------------------------- ⭐ API отзывов ---------------------------
+# --------------------------- API Reviews ---------------------------
 @app.route("/api/reviews")
 def api_reviews():
     db = get_db()
     c = db.cursor()
     c.execute("""
-    SELECT r.rating, r.text, r.created_at,
-           u.username, u.name, u.avatar
+    SELECT r.rating, r.text, u.username, u.name, u.avatar
     FROM reviews r
     JOIN users u ON u.id = r.user_id
     ORDER BY r.created_at DESC
     """)
     rows = c.fetchall()
     return jsonify([
-        {
-            "rating": r[0],
-            "text": r[1],
-            "time": r[2],
-            "username": r[3],
-            "name": r[4],
-            "avatar": r[5]
-        } for r in rows
+        {"rating": r[0], "text": r[1], "username": r[2], "name": r[3], "avatar": r[4]}
+        for r in rows
     ])
 
 @app.route("/api/review", methods=["POST"])
@@ -114,13 +101,7 @@ def add_review():
     db.commit()
     return {"status": "ok"}
 
-# --------------------------- ⭐ Ошибки ---------------------------
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html"), 404
-
-# --------------------------- 🚀 Запуск ---------------------------
+# --------------------------- Запуск ---------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
-
+    app.run(host="0.0.0.0", port=port, debug=True)
